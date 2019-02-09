@@ -8,8 +8,14 @@ http = urllib3.PoolManager()
 page = 1
 parsed_data = []
 
+# get most recent entry in db
+conn = sqlite3.connect('recenttracks.db')
+c = conn.cursor()
+c.execute('SELECT time FROM recenttracks ORDER BY time DESC')
+latest = c.fetchone()[0] + 1
+
 while True:
-	r = http.request('GET', 'http://ws.audioscrobbler.com/2.0/', fields={'api_key': '55c3d9442dc812969a1925cfdc85a7bc', 'format': 'json', 'method': 'user.getrecenttracks', 'user': 'konzertheld', 'limit': 200, 'page': page})
+	r = http.request('GET', 'http://ws.audioscrobbler.com/2.0/', fields={'api_key': '55c3d9442dc812969a1925cfdc85a7bc', 'format': 'json', 'method': 'user.getrecenttracks', 'user': 'konzertheld', 'from': latest, 'limit': 200, 'page': page})
 	jsondata = json.loads(r.data.decode('utf-8'))
 
 	for track in jsondata["recenttracks"]["track"]:
@@ -22,9 +28,6 @@ while True:
 	if jsondata["recenttracks"]["@attr"]["page"] == jsondata["recenttracks"]["@attr"]["totalPages"]:
 		break
 
-conn = sqlite3.connect('recenttracks.db')
-c = conn.cursor()
-c.execute("DELETE FROM recenttracks")
 c.executemany('INSERT INTO recenttracks (artist, artist_mbid, title, title_mbid, time) VALUES (?,?,?,?,?)', parsed_data)
 conn.commit()
 conn.close()
